@@ -1,491 +1,456 @@
 # ESP32-S3 ECG Monitor
 
-**Real-Time ECG Monitoring and Heart-Rate Detection using ESP32-S3, MicroPython, GLCD, and Proteus Simulation**
+**Embedded ECG dataset replay, heart-rate estimation, and GLCD visualization using ESP32-S3, MicroPython, UART, and Proteus.**
+
+> **Educational / engineering project — not a medical device and not intended for clinical diagnosis.**
 
 ---
 
 ## Overview
 
-This project implements a real-time ECG monitoring and heart-rate estimation system using an **ESP32-S3**, **MicroPython**, a **128×64 LGM12641BS1R GLCD**, and **Proteus simulation**.
+This project demonstrates an embedded ECG monitoring pipeline built around an **ESP32-S3 running MicroPython**.
 
-ECG samples are transmitted from a Python application through UART to the simulated ESP32-S3. The firmware processes the incoming ECG signal, detects waveform peaks, estimates heart rate from RR intervals, determines a simple ECG status, and displays the waveform and calculated information on the GLCD.
+ECG samples stored in local text files are loaded and prepared by a Python transmitter on the host computer. Each 10-second ECG stage is normalized for display, transmitted to the ESP32-S3 through UART at a nominal **128 samples/second**, processed by lightweight embedded peak detection, and visualized on a **128×64 KS0108-style GLCD**.
 
-The project demonstrates the integration of:
+The firmware estimates heart rate from detected R-like peaks using RR intervals and classifies the current signal into three simple heart-rate-based states:
 
-* Embedded ECG signal processing
-* UART-based biomedical data transmission
-* Real-time ECG waveform visualization
-* Heart-rate estimation
-* MicroPython embedded development
-* ESP32-S3 simulation
-* KS0108-style GLCD interfacing
-* Python serial communication
-* Proteus-based embedded-system simulation
+* `BRADY`
+* `NORMAL`
+* `TACHY`
 
-> **Disclaimer:** This is an educational and engineering simulation project. It is not a medical device and must not be used for diagnosis, treatment, patient monitoring, or clinical decision-making.
+The project is implemented and demonstrated in **Proteus** using an ESP32-S3 and an LGM12641BS1R 128×64 GLCD.
 
 ---
 
-## Demo
-
-A 30-second demonstration video is included in the repository.
-
-The demonstration shows:
-
-* ECG data transmission
-* Real-time ECG waveform visualization
-* Heart-rate estimation
-* ECG status display
-* NORMAL → TACHY → BRADY test sequence
-
-### Demo Video
-
-`media/ECG_Arrhythmia_Detector_GitHub_30s.mp4`
-
----
-
-## System Architecture
+## Project Architecture
 
 ```text
-                 ECG Dataset
-                     │
-                     ▼
-          ┌─────────────────────┐
-          │ Python ECG          │
-          │ Transmitter         │
-          │                     │
-          │ 128 Hz              │
-          │ 115200 baud         │
-          └──────────┬──────────┘
-                     │
-                     │ UART
-                     │
-                     ▼
-          ┌─────────────────────┐
-          │ ESP32-S3            │
-          │ MicroPython         │
-          │                     │
-          │ • ECG reception     │
-          │ • Peak detection    │
-          │ • RR calculation    │
-          │ • HR estimation     │
-          │ • Status detection  │
-          └──────────┬──────────┘
-                     │
-                     │ GPIO
-                     ▼
-          ┌─────────────────────┐
-          │ LGM12641BS1R         │
-          │ 128 × 64 GLCD        │
-          │                     │
-          │ • ECG waveform      │
-          │ • Heart rate        │
-          │ • ECG status        │
-          └─────────────────────┘
-
-                 Proteus
-              Simulation Layer
+ECG TXT Dataset
+      │
+      ▼
+Python ECG Transmitter
+      │
+      ├── Load ECG samples
+      ├── Select 10-second stage
+      ├── Normalize to GLCD range
+      └── Timed 128 Hz byte transmission
+      │
+      ▼
+UART / Virtual Serial Link
+      │
+      ▼
+ESP32-S3 + MicroPython
+      │
+      ├── 128-byte frame reception
+      ├── Lightweight peak detection
+      ├── RR interval calculation
+      ├── Rolling RR history
+      ├── Heart-rate estimation
+      └── HR-based status classification
+      │
+      ▼
+128×64 KS0108-style GLCD
+      │
+      ├── Heart rate / status
+      └── ECG waveform
 ```
 
-The serial port is configurable and depends on the virtual COM-port configuration of the host computer.
+The system uses **dataset replay rather than physical ECG sensor acquisition**.
 
 ---
 
-## Main Features
+## Key Features
 
-* ESP32-S3 based ECG monitoring
-* MicroPython firmware
-* LGM12641BS1R 128×64 GLCD
-* KS0108-style 8-bit parallel interface
-* UART ECG streaming
-* 128 Hz ECG sampling
-* Real ECG datasets
-* ECG peak detection
+* ESP32-S3 embedded implementation using MicroPython
+* ECG dataset replay through UART
+* Nominal 128 samples/second transmission
+* 115200 baud, 8N1 serial communication
+* 128-byte ECG processing frames
+* Lightweight amplitude-threshold peak detection
+* Local-maximum detection
+* Refractory-period control
 * RR interval calculation
+* Rolling average of recent RR intervals
 * Heart-rate estimation
-* Rolling RR interval history
-* NORMAL / TACHY / BRADY status display
-* Real-time ECG waveform rendering
-* Python ECG transmitter
+* `BRADY / NORMAL / TACHY` status classification
+* 128×64 GLCD waveform visualization
+* KS0108-style 8-bit GLCD interface
+* Framebuffer-based display rendering
+* Display decimation from 128 Hz to 32 display points/second
+* 4-second visible waveform sweep
 * Proteus simulation
-* Lightweight GLCD refresh architecture
-* 30-second demonstration sequence
+* Python host-side ECG transmitter
+* Three-stage 30-second demonstration
+
+---
+
+## Technology Stack
+
+**ESP32-S3 · MicroPython · Embedded Signal Processing · UART · GLCD · Proteus · Python · PySerial**
 
 ---
 
 ## Repository Structure
 
-The current repository is intentionally kept simple so the main project components can be opened directly from the repository root.
-
 ```text
 ESP32-S3-ECG-Monitor/
-│
-├── README.md
-├── main.py
-├── send_ecg_30s.py
-│
-├── ecg_normal_10s.txt
-├── ecg_tachy_10s.txt
-├── ecg_brady_10s.txt
+├── media/
+│   └── ECG_Arrhythmia_Detector_GitHub_30s.mp4
 │
 ├── ECG Arrhythmia Detector.pdsprj
 ├── ECG Arrhythmia Detector.png
-│
-└── media/
-    └── ECG_Arrhythmia_Detector_GitHub_30s.mp4
+├── LICENSE
+├── README.md
+├── ecg_brady_10s.txt
+├── ecg_normal_10s.txt
+├── ecg_tachy_10s.txt
+├── main.py
+└── send_ecg_30s.py
 ```
 
-### Main Files
-
-| File                                           | Description                   |
-| ---------------------------------------------- | ----------------------------- |
-| `main.py`                                      | ESP32-S3 MicroPython firmware |
-| `send_ecg_30s.py`                              | Python ECG serial transmitter |
-| `ecg_normal_10s.txt`                           | Normal ECG dataset            |
-| `ecg_tachy_10s.txt`                            | Tachycardia test dataset      |
-| `ecg_brady_10s.txt`                            | Bradycardia test dataset      |
-| `ECG Arrhythmia Detector.pdsprj`               | Proteus simulation project    |
-| `ECG Arrhythmia Detector.png`                  | Proteus/project image         |
-| `media/ECG_Arrhythmia_Detector_GitHub_30s.mp4` | Demonstration video           |
-
 ---
 
-# Hardware
+# ECG Data Pipeline
 
-## Microcontroller
+The host-side transmitter automatically searches the configured ECG directory for `.txt` files.
 
-### ESP32-S3
+Files are identified using filename keywords such as:
 
-The ESP32-S3 executes the MicroPython firmware and performs:
+* `normal`
+* `nsr`
+* `sinus`
+* `tachy`
+* `tachycard`
+* `brady`
+* `bradycard`
 
-* UART reception
-* ECG sample processing
-* Peak detection
-* RR interval calculation
-* Heart-rate estimation
-* ECG status determination
-* GLCD control
-* Real-time waveform rendering
-
----
-
-## Display
-
-### LGM12641BS1R 128×64 GLCD
-
-The project uses a 128×64 graphical LCD with a KS0108-style interface.
-
-The interface contains:
-
-* 8-bit data bus
-* Controller select signals
-* Data/Instruction control
-* Read/Write control
-* Enable signal
-* Reset signal
-
----
-
-# GLCD Pin Mapping
-
-The following is the **tested and working pin configuration** used by the Proteus simulation.
-
-| GLCD Signal | ESP32-S3 GPIO |
-| ----------- | ------------: |
-| BD0         |         GPIO4 |
-| BD1         |         GPIO5 |
-| BD2         |         GPIO6 |
-| BD3         |         GPIO7 |
-| BD4         |         GPIO8 |
-| BD5         |         GPIO9 |
-| BD6         |        GPIO10 |
-| BD7         |        GPIO11 |
-| DI          |        GPIO12 |
-| R/W         |        GPIO13 |
-| E           |        GPIO14 |
-| CS1         |        GPIO15 |
-| CS2         |        GPIO16 |
-| RST         |        GPIO17 |
-
-> **Important:** Keep this mapping unchanged when reproducing the current Proteus simulation.
-
----
-
-# ECG Data
-
-The project uses ECG datasets for testing rather than generating a simple mathematical sine wave.
-
-Three test conditions are included:
-
-```text
-ecg_normal_10s.txt
-ecg_tachy_10s.txt
-ecg_brady_10s.txt
-```
-
-Each dataset contains:
-
-* 1280 ECG samples
-* 128 samples/second
-* 10 seconds of ECG data
-
-### Sampling Configuration
-
-```text
-Sampling frequency : 128 Hz
-Samples/second     : 128
-Samples/stage      : 1280
-Stage duration     : 10 seconds
-```
-
-The complete demonstration contains three stages:
+The transmitter expects three ECG stages:
 
 ```text
 NORMAL
-   ↓
-TACHY
-   ↓
-BRADY
+TACHYCARDIA
+BRADYCARDIA
 ```
 
-Total demonstration duration:
+Each stage is prepared as exactly:
 
 ```text
-3 × 10 seconds = 30 seconds
+128 samples/second × 10 seconds = 1280 samples
 ```
+
+If a file contains more than 1280 samples, the first 1280 are used.
+
+If it contains fewer than 1280 samples, the waveform is repeated until 1280 samples are available.
 
 ---
 
-# ECG Processing
+# Host-Side ECG Normalization
 
-The ESP32-S3 processes ECG samples as they arrive through UART.
-
-The firmware uses a lightweight peak-detection approach based on:
-
-* Amplitude threshold
-* Local maximum detection
-* Refractory interval
-
-A sample can be considered an ECG peak when:
-
-1. Its amplitude is above the configured threshold.
-2. It is greater than or equal to the previous sample.
-3. It is greater than or equal to the following sample.
-4. The refractory interval since the previous detected peak has elapsed.
-
-This approach is intentionally lightweight for the MicroPython + Proteus environment.
-
----
-
-# Heart-Rate Calculation
-
-The firmware measures the number of samples between detected ECG peaks to obtain RR intervals.
-
-Recent RR intervals are retained and averaged to reduce the effect of individual interval variations.
-
-The heart-rate calculation is:
+Before transmission, each ECG stage is independently normalized into the GLCD coordinate range:
 
 ```text
-Heart Rate = Sampling Frequency × 60 / Average RR Interval
+1 ... 62
 ```
 
-For this project:
+The transformation maps the minimum ECG value toward the lower display coordinate and the maximum toward the upper display coordinate.
 
-```text
-Sampling Frequency = 128 Hz
-```
-
-Therefore:
-
-```text
-HR = 128 × 60 / Average RR Interval
-```
-
-The firmware maintains a short rolling RR history before updating the displayed heart rate.
-
----
-
-# ECG Status
-
-The calculated heart rate is mapped to one of three demonstration states:
-
-| Heart Rate   | Display Status |
-| ------------ | -------------- |
-| `< 60 BPM`   | `BRADY`        |
-| `60–100 BPM` | `NORMAL`       |
-| `> 100 BPM`  | `TACHY`        |
-
-These thresholds are used **only for this educational demonstration** and should not be interpreted as clinical diagnostic criteria.
-
----
-
-# Real-Time Display
-
-The GLCD is divided into two logical areas.
-
-## Information Area
-
-The upper section displays heart-rate information and status.
-
-Example:
-
-```text
-HR:78   NORMAL
-```
-
-## ECG Waveform Area
-
-The lower section displays the ECG waveform.
-
-The firmware is designed to avoid unnecessarily updating the entire GLCD for every incoming ECG sample.
-
-Instead, four ECG samples are grouped into one display point.
-
-```text
-128 ECG samples/sec
-        │
-        ▼
-4 samples/group
-        │
-        ▼
-32 display points/sec
-```
-
-This reduces GLCD communication overhead and helps maintain stable Proteus simulation performance.
-
-The ECG signal continues to be received and processed at the full 128 Hz rate.
-
----
-
-# UART Communication
-
-The ESP32-S3 receives ECG samples through UART.
-
-## UART Configuration
-
-```text
-Baud rate : 115200
-Data bits : 8
-Parity    : None
-Stop bits : 1
-```
-
-The firmware configuration is:
-
-```python
-UART(0, 115200, bits=8, parity=None, stop=1)
-```
-
-The serial port itself is **machine-dependent**.
-
-For example, the current development configuration may use:
-
-```text
-COM11
-```
-
-If another COM port is used on the host computer, update:
-
-```python
-SERIAL_PORT = "COM11"
-```
-
-inside `send_ecg_30s.py`.
-
-> Do not assume that `COM11` will be the correct port on another computer.
-
----
-
-# Python ECG Transmitter
-
-The ECG transmitter is:
+This normalization is performed by:
 
 ```text
 send_ecg_30s.py
 ```
 
-It performs the following operations:
+before the samples are transmitted.
 
-1. Locates the ECG dataset files.
-2. Loads the ECG samples.
-3. Validates/prepares the required number of samples.
-4. Normalizes each stage for the GLCD display range.
-5. Sends ECG samples through the configured serial port.
-6. Maintains an approximately 128 Hz transmission rate.
-7. Sends the three ECG stages sequentially.
+Therefore, the ESP32-S3 receives **normalized display-domain sample values**, rather than calibrated ECG voltage values such as millivolts.
 
-The transmission sequence is:
-
-```text
-NORMAL
-   ↓
-TACHY
-   ↓
-BRADY
-```
-
-The transmitter sends the ECG samples as byte values over UART.
+This approach is intended for waveform visualization and embedded algorithm demonstration.
 
 ---
 
-# Python Requirements
+# UART Communication
 
-Install Python 3.x.
+The host transmitter uses:
 
-Install the required serial communication package:
-
-```bash
-pip install pyserial
+```text
+Baud rate: 115200
+Format:    8N1
+Sample rate: 128 samples/second
+Payload:   1 byte/sample
 ```
 
-Verify the installation:
+Each normalized ECG sample is transmitted as exactly one byte:
 
-```bash
-python -c "import serial; print(serial.__version__)"
+```text
+Python → UART → ESP32-S3
 ```
+
+The firmware accumulates incoming bytes into frames of:
+
+```text
+128 samples/frame
+```
+
+At 128 samples/second, one frame represents approximately:
+
+```text
+1 second of ECG data
+```
+
+The firmware sends:
+
+```text
+FRAME_OK
+```
+
+after processing each frame.
+
+The current Python transmitter does **not** read or use this acknowledgement for flow control. Therefore, the present implementation should be considered a timed streaming/replay system rather than a closed-loop ACK-controlled transport.
+
+---
+
+# Embedded ECG Processing
+
+The ESP32-S3 performs lightweight peak detection directly in the MicroPython firmware.
+
+The detector uses three main conditions.
+
+### 1. Amplitude threshold
+
+```python
+PEAK_THRESHOLD = 52
+```
+
+A candidate sample must reach the configured threshold.
+
+Because the transmitter normalizes ECG samples to the GLCD coordinate domain, this threshold operates on the normalized sample representation rather than on physical ECG voltage.
+
+### 2. Local maximum
+
+A sample is considered a peak candidate when it is greater than or equal to both neighboring samples.
+
+Conceptually:
+
+```text
+previous <= current >= next
+```
+
+### 3. Refractory period
+
+The firmware requires a minimum distance between accepted peaks:
+
+```python
+REFRACTORY_SAMPLES = 30
+```
+
+At 128 samples/second this corresponds to approximately:
+
+```text
+30 / 128 ≈ 234 ms
+```
+
+This prevents closely spaced local maxima from being counted as separate heartbeats.
+
+---
+
+# RR Interval and Heart-Rate Estimation
+
+When a new peak is accepted, the firmware calculates the sample distance from the previous accepted peak.
+
+```text
+RR = current_peak_index - previous_peak_index
+```
+
+Accepted RR intervals are stored in a rolling history containing up to four intervals.
+
+The average RR interval is then used to estimate heart rate:
+
+```text
+HR = (FS × 60) / average_RR
+```
+
+where:
+
+```text
+FS = 128 samples/second
+```
+
+The implementation uses integer arithmetic for the final heart-rate calculation.
+
+---
+
+# Heart-Rate-Based Status
+
+The current firmware uses heart rate to assign a simple status:
+
+```text
+HR < 60       → BRADY
+60 ≤ HR ≤ 100  → NORMAL
+HR > 100      → TACHY
+```
+
+This classification is based only on calculated heart rate.
+
+It is **not a clinical arrhythmia classifier** and does not attempt to identify specific ECG morphologies such as:
+
+* atrial fibrillation
+* premature ventricular contractions
+* ventricular tachycardia
+* ST-segment abnormalities
+* conduction abnormalities
+
+The project should therefore be considered an **embedded ECG monitor with heart-rate-based status classification**, rather than a clinical arrhythmia detection system.
+
+---
+
+# GLCD Interface
+
+The project uses a:
+
+```text
+128 × 64 monochrome GLCD
+```
+
+with a KS0108-style 8-bit interface.
+
+### Tested pin mapping
+
+| Function | ESP32-S3 GPIO |
+| -------- | ------------: |
+| DB0      |         GPIO4 |
+| DB1      |         GPIO5 |
+| DB2      |         GPIO6 |
+| DB3      |         GPIO7 |
+| DB4      |         GPIO8 |
+| DB5      |         GPIO9 |
+| DB6      |        GPIO10 |
+| DB7      |        GPIO11 |
+| DI       |        GPIO12 |
+| R/W      |        GPIO13 |
+| E        |        GPIO14 |
+| CS1      |        GPIO15 |
+| CS2      |        GPIO16 |
+| RST      |        GPIO17 |
+
+The firmware maintains a:
+
+```text
+128 × 64 / 8 = 1024-byte
+```
+
+1-bit framebuffer.
+
+The display is divided conceptually into:
+
+```text
+Upper area
+──────────────
+HR / status
+
+Lower area
+──────────────
+ECG waveform
+```
+
+---
+
+# Waveform Display Architecture
+
+ECG processing remains at:
+
+```text
+128 samples/second
+```
+
+while the GLCD receives fewer display points.
+
+Every four ECG samples are grouped into one display point:
+
+```text
+128 / 4 = 32 display points/second
+```
+
+The current implementation uses the **last sample of each four-sample group** for display.
+
+With 128 GLCD columns:
+
+```text
+128 columns / 32 points/sec = 4 seconds
+```
+
+Therefore, the visible waveform sweep represents approximately four seconds of ECG data.
+
+This display decimation is independent of the ECG processing rate.
+
+---
+
+# Embedded Display Optimization
+
+The firmware does not continuously redraw the entire GLCD.
+
+Instead:
+
+* status information is updated when HR/status changes
+* waveform columns are updated incrementally
+* the waveform area is cleared only where required
+* the framebuffer preserves the display state
+* the display update rate is lower than the ECG processing rate
+
+This reduces unnecessary GLCD traffic while keeping the waveform visually responsive in the simulation.
+
+---
+
+# 30-Second Demonstration
+
+The supplied transmitter sends three 10-second ECG stages sequentially:
+
+```text
+0–10 s    NORMAL
+10–20 s   TACHYCARDIA
+20–30 s   BRADYCARDIA
+```
+
+The labels describe the intended dataset stages.
+
+The displayed status, however, is calculated independently by the ESP32-S3 firmware from detected peaks and estimated heart rate.
+
+This means the firmware does not simply trust the filename or stage label.
+
+---
+
+# Proteus Simulation
+
+The project includes a Proteus simulation containing the embedded ECG monitoring environment.
+
+The simulation demonstrates:
+
+* ESP32-S3 firmware execution
+* UART ECG data reception
+* ECG processing
+* heart-rate estimation
+* status classification
+* GLCD waveform visualization
+
+The Proteus project is:
+
+```text
+ECG Arrhythmia Detector.pdsprj
+```
+
+The name is retained as the original project artifact; the implemented algorithm itself performs lightweight heart-rate-based ECG status classification.
 
 ---
 
 # Running the Project
 
-## 1. Clone the Repository
+## 1. Clone the repository
 
 ```bash
 git clone https://github.com/kolopdel-boop/ESP32-S3-ECG-Monitor.git
 cd ESP32-S3-ECG-Monitor
 ```
 
----
-
-## 2. Configure the ECG Data Directory
-
-The current `send_ecg_30s.py` contains a configurable ECG data directory.
-
-Example:
-
-```python
-ECG_DIR = Path(r"C:\ECG_Project")
-```
-
-Change this path to the directory containing:
-
-```text
-ecg_normal_10s.txt
-ecg_tachy_10s.txt
-ecg_brady_10s.txt
-```
-
-For example:
-
-```python
-ECG_DIR = Path(r"C:\ESP32-S3-ECG-Monitor")
-```
-
-if the dataset files are located in the repository root.
-
----
-
-## 3. Configure the Serial Port
+## 2. Configure the ECG data directory
 
 Open:
 
@@ -493,31 +458,31 @@ Open:
 send_ecg_30s.py
 ```
 
-Find:
+and configure:
+
+```python
+ECG_DIR = Path(r"C:\path\to\your\ECG\data")
+```
+
+Do not use the example path as a required project location.
+
+The directory should contain the required ECG `.txt` files.
+
+---
+
+## 3. Configure the serial port
+
+Set the appropriate COM port:
 
 ```python
 SERIAL_PORT = "COM11"
 ```
 
-Change it to the COM port used by your Proteus/virtual serial configuration.
-
-Example:
-
-```python
-SERIAL_PORT = "COM9"
-```
-
-The baud rate must remain:
-
-```python
-BAUDRATE = 115200
-```
-
-unless the firmware configuration is changed accordingly.
+The example above reflects the development setup and may need to be changed for another computer or Proteus virtual COM configuration.
 
 ---
 
-## 4. Open Proteus
+## 4. Start the Proteus simulation
 
 Open:
 
@@ -525,290 +490,247 @@ Open:
 ECG Arrhythmia Detector.pdsprj
 ```
 
-The project should contain the ESP32-S3 and LGM12641BS1R GLCD simulation.
-
-Verify the GLCD wiring against the pin mapping in this README.
+and start the simulation with the ESP32-S3 and GLCD configured.
 
 ---
 
-## 5. Load the MicroPython Firmware
+## 5. Run the ECG transmitter
 
-The firmware is located directly in the repository root:
+Install the required Python serial package if necessary:
 
-```text
-main.py
+```bash
+pip install pyserial
 ```
 
-Load/run this firmware in the ESP32-S3 MicroPython environment used by the Proteus simulation.
-
----
-
-## 6. Start the Proteus Simulation
-
-Start the Proteus simulation and verify that:
-
-* ESP32-S3 is running
-* GLCD is initialized
-* UART connection is configured
-* GLCD wiring matches the tested pin mapping
-
----
-
-## 7. Start the ECG Transmitter
-
-Open PowerShell or a terminal in the repository directory:
+Then run:
 
 ```bash
 python send_ecg_30s.py
 ```
 
-The transmitter will send:
+The transmitter will:
 
-```text
-NORMAL
-   ↓
-TACHY
-   ↓
-BRADY
-```
-
-Each stage lasts approximately 10 seconds.
+1. locate the ECG files
+2. load the ECG samples
+3. prepare three 10-second stages
+4. normalize each stage for GLCD display
+5. transmit one byte per sample
+6. maintain nominal 128 Hz timing
+7. send NORMAL → TACHYCARDIA → BRADYCARDIA
 
 ---
 
-# Proteus Simulation
+# Runtime Processing Flow
 
-The complete embedded system is simulated in Proteus.
-
-The simulation includes:
-
-* ESP32-S3
-* LGM12641BS1R 128×64 GLCD
-* 8-bit GLCD data bus
-* GLCD control signals
-* UART communication
-* MicroPython firmware
-* ECG waveform visualization
-* Heart-rate calculation
-* ECG status display
-
-The Python transmitter runs externally and supplies ECG samples to the simulated ESP32-S3 through the serial connection.
-
-### Runtime Flow
+For each received 128-byte frame:
 
 ```text
-Python
-  │
-  │ ECG samples
-  ▼
-Serial / Virtual COM
-  │
-  ▼
-Proteus
-  │
-  ▼
-ESP32-S3
-  │
-  │ GPIO
-  ▼
-LGM12641BS1R GLCD
+UART reception
+      ↓
+128 ECG samples
+      ↓
+Peak detection
+      ↓
+RR interval calculation
+      ↓
+Rolling RR history
+      ↓
+Heart-rate estimation
+      ↓
+BRADY / NORMAL / TACHY
+      ↓
+GLCD status update
 ```
 
----
-
-# Display Architecture
-
-A key design consideration was the simulation workload created by frequent GLCD operations.
-
-A full framebuffer refresh for every ECG sample would generate unnecessary communication overhead.
-
-The current architecture separates:
-
-```text
-ECG processing rate
-        ≠
-GLCD display update rate
-```
-
-ECG processing:
+At the same time, the ECG samples are processed for waveform visualization:
 
 ```text
 128 samples/sec
-```
-
-Display processing:
-
-```text
+      ↓
+groups of 4 samples
+      ↓
 32 display points/sec
+      ↓
+128-column GLCD sweep
 ```
-
-This allows the firmware to continue processing the ECG signal at 128 Hz while reducing the number of GLCD updates performed during Proteus simulation.
 
 ---
 
-# Runtime Behavior
+# Current Implementation Status
 
-When the system starts before ECG samples are available, the display shows a waiting state.
+### Implemented
 
-The display then begins updating after ECG data is received.
-
-During the three test stages, the firmware independently calculates the heart rate from detected ECG peaks.
-
-The displayed status is determined from the calculated heart rate rather than simply using the dataset filename.
-
-For example:
-
-```text
-HR:78   NORMAL
-```
-
-or:
-
-```text
-HR:120  TACHY
-```
-
-or:
-
-```text
-HR:52   BRADY
-```
-
-The exact calculated values depend on the ECG samples and peak-detection behavior.
-
----
-
-# Development Environment
-
-The project was developed and tested with:
-
-* ESP32-S3
-* MicroPython
-* Proteus 8.x
-* Python 3.x
-* PySerial
-* Windows
-* Virtual serial communication
-* LGM12641BS1R 128×64 GLCD
-
----
-
-# Current Project Status
-
-## Implemented
-
-* [x] ESP32-S3 simulation
-* [x] MicroPython firmware
-* [x] GLCD initialization
-* [x] 8-bit GLCD data interface
-* [x] Tested ESP32-S3 ↔ GLCD pin mapping
-* [x] ECG dataset transmission
-* [x] UART communication
-* [x] Real-time ECG waveform visualization
-* [x] ECG peak detection
+* [x] ESP32-S3 MicroPython firmware
+* [x] UART ECG streaming
+* [x] 115200 baud communication
+* [x] 128 samples/second nominal replay
+* [x] 128-sample processing frames
+* [x] ECG dataset loading
+* [x] 10-second stage preparation
+* [x] Per-stage display normalization
+* [x] Lightweight peak detection
+* [x] Refractory-period control
 * [x] RR interval calculation
+* [x] Rolling RR history
 * [x] Heart-rate estimation
-* [x] NORMAL / TACHY / BRADY status display
+* [x] HR-based status classification
+* [x] 128×64 GLCD framebuffer
+* [x] Incremental waveform rendering
+* [x] Display decimation
 * [x] Proteus simulation
-* [x] Python ECG transmitter
-* [x] 30-second demonstration sequence
-* [x] Demonstration video
-
-## Possible Future Improvements
-
-* [ ] Longer ECG datasets
-* [ ] Additional ECG rhythms
-* [ ] ECG signal filtering
-* [ ] Baseline-wander removal
-* [ ] More advanced QRS detection
-* [ ] Pan-Tompkins-based processing
-* [ ] Improved ECG scaling
-* [ ] Adjustable display timebase
-* [ ] SD-card ECG playback
-* [ ] Real ECG sensor input
-* [ ] Physical hardware prototype
-* [ ] ECG data logging
-* [ ] More advanced waveform analysis
-* [ ] Additional GLCD visualization modes
+* [x] 30-second three-stage demonstration
+* [x] Frame acknowledgement from ESP32-S3
 
 ---
 
-# Known Limitations
+# Limitations
 
-This project is primarily designed as an educational embedded-systems and simulation project.
+This implementation is intentionally lightweight and educational.
 
-Current limitations include:
+### Signal processing
 
-* Simple threshold-based peak detection
-* No clinical-grade ECG filtering
-* No validated QRS detection algorithm
-* Demonstration-oriented heart-rate classification
-* ECG amplitude normalization for display
-* Dependence on virtual serial communication
-* Proteus simulation performance limitations
-* Dataset-driven input rather than a physical ECG sensor
+The current firmware does not implement:
 
-These limitations are intentional for the current project scope.
+* band-pass ECG filtering
+* baseline-wander removal
+* power-line interference suppression
+* Pan-Tompkins QRS detection
+* adaptive thresholding
+* morphology analysis
+* clinical QRS validation
+
+### Data acquisition
+
+The current system uses ECG files replayed from a host computer.
+
+It does not currently acquire ECG from a physical analog front end or ECG sensor.
+
+### Signal representation
+
+The host transmitter normalizes each stage independently into the GLCD display range before transmission.
+
+Therefore, the ESP32-S3 does not receive calibrated ECG amplitude values.
+
+### Classification
+
+The current `BRADY / NORMAL / TACHY` classification is based on calculated heart rate only.
+
+It should not be interpreted as clinical arrhythmia diagnosis.
+
+### Serial flow control
+
+The firmware sends `FRAME_OK` after each frame, but the current Python transmitter does not consume or use these acknowledgements.
+
+### Timing
+
+The host transmitter uses Python scheduling and the operating system's serial stack. The 128 Hz rate is therefore a **nominal timed replay rate**, not a hard real-time acquisition guarantee.
+
+### Validation
+
+The current project demonstrates the embedded processing pipeline and simulation behavior. It does not provide clinical validation or diagnostic performance evaluation.
 
 ---
 
 # Future Development
 
-Potential future versions may extend the project toward:
+Possible extensions include:
+
+### ECG signal conditioning
+
+* digital band-pass filtering
+* baseline-wander removal
+* 50/60 Hz interference suppression
+* amplitude calibration
+
+### Improved QRS detection
+
+* adaptive thresholding
+* Pan-Tompkins-style processing
+* slope and width constraints
+* more robust refractory logic
+* false-positive / false-negative evaluation
+
+### Advanced ECG analysis
+
+* morphology-based beat classification
+* PVC detection
+* AF-oriented analysis
+* HRV metrics
+* beat-to-beat monitoring
+
+### Embedded hardware
+
+* physical ECG analog front end
+* ADC-based ECG acquisition
+* real sensor input
+* SD-card logging
+* hardware UART acquisition
+* real-time embedded sampling
+
+### Communication
+
+* ACK-based flow control
+* frame sequence numbers
+* packet validation
+* dropped-frame detection
+* host/embedded synchronization
+
+### Display
+
+* scrolling timebase
+* adjustable gain
+* grid rendering
+* waveform scaling
+* multi-page monitoring screens
+* event indicators
+
+---
+
+# Engineering Focus
+
+This project demonstrates the integration of several embedded engineering layers rather than relying on a single software algorithm:
 
 ```text
-ECG Dataset
-     │
-     ▼
-Digital Filtering
-     │
-     ▼
-QRS Detection
-     │
-     ▼
-RR Interval Analysis
-     │
-     ▼
-Heart-Rate Calculation
-     │
-     ▼
-ECG Visualization
-     │
-     ├── GLCD
-     ├── Serial Monitor
-     └── Data Logging
+Biomedical Data
+      ↓
+Python Data Pipeline
+      ↓
+Timed Serial Transport
+      ↓
+ESP32-S3 Firmware
+      ↓
+Embedded ECG Processing
+      ↓
+Heart-Rate Estimation
+      ↓
+GLCD Rendering
+      ↓
+Proteus System Simulation
 ```
 
-Possible additions include real ECG sensor acquisition, more advanced signal processing, longer datasets, additional rhythm categories, and hardware deployment.
+The main engineering focus is the integration of **embedded firmware, biomedical signal replay, serial communication, lightweight signal processing, and constrained graphical display**.
+
+---
+
+# Demonstration
+
+A 30-second demonstration video is available in:
+
+```text
+media/ECG_Arrhythmia_Detector_GitHub_30s.mp4
+```
+
+The demonstration shows the three-stage ECG replay and the corresponding ESP32-S3 processing and GLCD visualization.
 
 ---
 
 # Disclaimer
 
-This project is intended for **educational, simulation, and software-development purposes only**.
+This project is intended for **education, experimentation, and embedded-systems engineering practice**.
 
-It is **not a medical device** and must not be used for:
+It is not a medical device and has not been clinically validated.
 
-* Medical diagnosis
-* Treatment decisions
-* Patient monitoring
-* Clinical decision-making
-
-The ECG datasets, heart-rate thresholds, peak-detection algorithm, and signal-processing implementation have not been validated for clinical use.
-
----
-
-# Author
-
-**Mas Has**
-
-GitHub:
-
-https://github.com/kolopdel-boop
-
-Project:
-
-https://github.com/kolopdel-boop/ESP32-S3-ECG-Monitor
+Heart-rate thresholds and ECG processing methods shown in this repository are simplified engineering implementations and must not be used for medical diagnosis or treatment decisions.
 
 ---
 
@@ -816,4 +738,4 @@ https://github.com/kolopdel-boop/ESP32-S3-ECG-Monitor
 
 This project is released under the **MIT License**.
 
-See the `LICENSE` file for details.
+See [`LICENSE`](LICENSE) for details.
